@@ -121,9 +121,6 @@ public class CoreService {
         }
 
         return returnBuffer.toString();
-
-        //System.out.println();
-
         // resultSet数据下标从1开始 ResultSet tableRet =
         //conn.getMetaData().getTables(null, null, "%", new String[] { "TABLE" });
         //while (tableRet.next()) {
