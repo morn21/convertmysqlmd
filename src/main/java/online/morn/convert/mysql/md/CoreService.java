@@ -3,12 +3,11 @@ package online.morn.convert.mysql.md;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.UnsupportedEncodingException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.sun.xml.internal.fastinfoset.alphabet.BuiltInRestrictedAlphabets.table;
 
 public class CoreService {
 
@@ -16,8 +15,7 @@ public class CoreService {
         try {
             Connection conn = DBManager.getConn();
             String str = getTables(conn);//获得表格数据
-            DBManager.closeConn(conn);
-
+            DBManager.close(conn,null,null);
             System.out.println(str);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -64,6 +62,36 @@ public class CoreService {
     }
 
     /**
+     * 根据表名获得注释
+     * @param tableName
+     * @return
+     */
+    public String getCommentByTableName(String tableName){
+        String comment = "";
+        Connection conn = DBManager.getConn();
+        Statement stmt = null;
+        ResultSet rs = null;
+        try {
+            //System.out.println(tableName);
+            stmt = conn.createStatement();
+            rs = stmt.executeQuery("SHOW CREATE TABLE `" + tableName + "`");
+            if (rs != null && rs.next()) {
+                String createDDL = rs.getString(2);
+                int index = createDDL.indexOf("COMMENT='");
+                if (index < 0) {
+                    return "";
+                }
+                comment = createDDL.substring(index + 9, createDDL.length() - 1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBManager.close(conn,stmt,rs);
+        }
+        return comment;
+    }
+
+    /**
      * 获得全部表格数据
      * @param conn
      * @return
@@ -71,7 +99,7 @@ public class CoreService {
      */
     private String getTables(Connection conn) throws SQLException {
         DatabaseMetaData dbMetData = conn.getMetaData();
-        ResultSet rs = dbMetData.getTables(null, convertDatabaseCharsetType("root", "mysql"), null, new String[] { "TABLE", "VIEW" });
+        ResultSet rs = dbMetData.getTables(null, "%", "%", new String[] { "TABLE", "VIEW" });
 
         StringBuffer returnBuffer = new StringBuffer();
         returnBuffer.append("----------------------------------------\n\n\n\n");
@@ -82,14 +110,16 @@ public class CoreService {
             String str4 = rs.getString(4);
             String str5 = rs.getString(5);
             if (str4 != null && (str4.equalsIgnoreCase("TABLE") || str4.equalsIgnoreCase("VIEW"))) {
-                String tableName = rs.getString(3).toLowerCase();
-                String tableRemarks = rs.getString("REMARKS");
-                tableRemarks = replaceRemarks(tableRemarks);//替换注释
+                //String tableName = rs.getString(3).toLowerCase();
+                String tableName = rs.getString("TABLE_NAME").toLowerCase();
+                //String tableRemarks = rs.getString("REMARKS");
+                String tableComment = getCommentByTableName(tableName);
+                tableComment = replaceRemarks(tableComment);//替换注释
                 //System.out.println("tableName:" + tableName);
                 //System.out.println("tableRemarks:" + tableRemarks);
                 returnBuffer.append(tableName);
-                if(StringUtils.isNotBlank(tableRemarks)){
-                    returnBuffer.append("（").append(tableRemarks).append("）");
+                if(StringUtils.isNotBlank(tableComment)){
+                    returnBuffer.append("（").append(tableComment).append("）");
                 }
                 returnBuffer.append("\n\n");
                 returnBuffer.append("| 字段名 | 类型 | 长度 | 含义 | 主外键 | 默认值 | 允许NULL |\n");//表头
@@ -117,6 +147,8 @@ public class CoreService {
                     returnBuffer.append(" | ");
                     if(columnName.equals("id")){
                         returnBuffer.append("主键");//主外键
+                    } else if(columnName.endsWith("_id")){
+                        returnBuffer.append(columnName);//主外键
                     }
                     returnBuffer.append(" | ");
                     if(columnName.equals("id")){
@@ -138,6 +170,9 @@ public class CoreService {
         }
 
         return returnBuffer.toString();
+
+        //System.out.println();
+
         // resultSet数据下标从1开始 ResultSet tableRet =
         //conn.getMetaData().getTables(null, null, "%", new String[] { "TABLE" });
         //while (tableRet.next()) {

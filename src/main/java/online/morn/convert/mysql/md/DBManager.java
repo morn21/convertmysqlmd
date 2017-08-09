@@ -1,8 +1,6 @@
 package online.morn.convert.mysql.md;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class DBManager {
 
@@ -36,10 +34,20 @@ public class DBManager {
     /**
      * 关闭连接
      * @param conn java.sql.Connection
+     * @param stmt ava.sql.Statement
+     * @param rs ava.sql.ResultSet
      */
-    public static void closeConn(Connection conn){
+    public static void close(Connection conn, Statement stmt, ResultSet rs){
         try {
-            conn.close();
+            if(rs != null){
+                rs.close();
+            }
+            if(stmt != null){
+                stmt.close();
+            }
+            if(conn != null){
+                conn.close();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
