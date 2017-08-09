@@ -2,10 +2,13 @@ package online.morn.convert.mysql.md;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CoreService {
 
@@ -50,6 +53,17 @@ public class CoreService {
     }
 
     /**
+     * 替换注释
+     * @param str
+     * @return java.lang.String
+     */
+    private String replaceRemarks(String str){
+        str = str.replaceAll("\n","<br/>");
+        str = str.replaceAll("\\|","<br/>");
+        return str;
+    }
+
+    /**
      * 获得全部表格数据
      * @param conn
      * @return
@@ -70,6 +84,7 @@ public class CoreService {
             if (str4 != null && (str4.equalsIgnoreCase("TABLE") || str4.equalsIgnoreCase("VIEW"))) {
                 String tableName = rs.getString(3).toLowerCase();
                 String tableRemarks = rs.getString("REMARKS");
+                tableRemarks = replaceRemarks(tableRemarks);//替换注释
                 //System.out.println("tableName:" + tableName);
                 //System.out.println("tableRemarks:" + tableRemarks);
                 returnBuffer.append(tableName);
@@ -77,8 +92,8 @@ public class CoreService {
                     returnBuffer.append("（").append(tableRemarks).append("）");
                 }
                 returnBuffer.append("\n\n");
-                returnBuffer.append("| 字段名 | 类型 | 长度 | 含义 | 主外键 | 默认值 | 允许NULL | 备注 |\n");//表头
-                returnBuffer.append("| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |\n");
+                returnBuffer.append("| 字段名 | 类型 | 长度 | 含义 | 主外键 | 默认值 | 允许NULL |\n");//表头
+                returnBuffer.append("| ----- | ----- | ----- | ----- | ----- | ----- | ----- |\n");
 
                 // 根据表名提前表里面信息：
                 ResultSet colRet = dbMetData.getColumns(null, "%", tableName, "%");
@@ -87,36 +102,38 @@ public class CoreService {
                     String columnType = colRet.getString("TYPE_NAME");
                     int datasize = colRet.getInt("COLUMN_SIZE");
                     String remarks = colRet.getString("REMARKS");
+                    remarks = replaceRemarks(remarks);//替换注释
                     int nullable = colRet.getInt("NULLABLE");
                     int digits = colRet.getInt("DECIMAL_DIGITS");
 
-                    returnBuffer.append("|");
+                    returnBuffer.append("| ");
                     returnBuffer.append(columnName);//字段名
-                    returnBuffer.append("|");
+                    returnBuffer.append(" | ");
                     returnBuffer.append(columnType);//类型
-                    returnBuffer.append("|");
+                    returnBuffer.append(" | ");
                     returnBuffer.append(datasize);//长度
-                    returnBuffer.append("|");
+                    returnBuffer.append(" | ");
                     returnBuffer.append(remarks);//含义
-                    returnBuffer.append("|");
+                    returnBuffer.append(" | ");
                     if(columnName.equals("id")){
                         returnBuffer.append("主键");//主外键
                     }
-                    returnBuffer.append("|");
+                    returnBuffer.append(" | ");
                     if(columnName.equals("id")){
                         returnBuffer.append("AUTO_INCREMENT");//默认值
                     }
-                    returnBuffer.append("|");
+                    returnBuffer.append(" | ");
                     if(nullable == 0){
                         returnBuffer.append("不允许");//允许NULL
                     } else {
                         returnBuffer.append("允许");//允许NULL
                     }
-                    returnBuffer.append("|");
-                    returnBuffer.append("|\n");
+                    returnBuffer.append(" |\n");
                     //System.out.println(columnName + " " + columnType + " "+ datasize + " " + digits + " " + nullable + " " + remarks);
                 }
                 returnBuffer.append("\n\n\n");
+                returnBuffer.append("----------------------------------------");
+                returnBuffer.append("\n\n");
             }
         }
 
